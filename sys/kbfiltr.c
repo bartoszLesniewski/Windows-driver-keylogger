@@ -806,6 +806,23 @@ Return Value:
 
     devExt = FilterGetData(hDevice);
 
+    if (InputDataStart->Flags == KEY_MAKE)
+    {
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Pressed code: %d\n", InputDataStart->MakeCode);
+    }
+    else if (InputDataStart->Flags == KEY_BREAK)
+    {
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Released code: %d\n", InputDataStart->MakeCode);
+    }
+    else if (InputDataStart->Flags == KEY_E0)
+    {
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "E0 code: %d\n", InputDataStart->MakeCode);
+    }
+    else if (InputDataStart->Flags == KEY_E1)
+    {
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "E1 code: %d\n", InputDataStart->MakeCode);
+    }
+
     (*(PSERVICE_CALLBACK_ROUTINE)(ULONG_PTR) devExt->UpperConnectData.ClassService)(
         devExt->UpperConnectData.ClassDeviceObject,
         InputDataStart,
