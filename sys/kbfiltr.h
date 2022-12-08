@@ -199,6 +199,11 @@ KbFiltr_CreateRawPdo(
     ULONG           InstanceNo
 );
 
+NTSTATUS
+CreateFile();
+
+VOID
+Print_IRQL();
 
 
 #endif  // KBFILTER_H
