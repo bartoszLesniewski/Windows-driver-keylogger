@@ -937,15 +937,62 @@ WorkitemRoutine(
     if (KeGetCurrentIrql() == PASSIVE_LEVEL)
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "PASSIVE_LEVEL: WorkitemRoutine\n");
 
+   
+    // Do not try to perform any file operations at higher IRQL levels.
+    // Instead, you may use a work item or a system worker thread to perform file operations.
 
-    /*
-    PIO_WORKITEM pIoWorkItem;
-    pIoWorkItem = (PIO_WORKITEM)Context;
-    IoFreeWorkItem(pIoWorkItem);
-    */
+    if (KeGetCurrentIrql() == PASSIVE_LEVEL)
+    {
+        HANDLE handle;
+        NTSTATUS ntstatus;
+        IO_STATUS_BLOCK ioStatusBlock;
+
+        ntstatus = ZwCreateFile(&handle,
+                                FILE_APPEND_DATA | SYNCHRONIZE,
+                                &objAttr, 
+                                &ioStatusBlock, 
+                                NULL,
+                                FILE_ATTRIBUTE_NORMAL,
+                                0,
+                                FILE_OPEN_IF,
+                                FILE_SYNCHRONOUS_IO_NONALERT,
+                                NULL, 
+                                0);
+
+        CHAR buffer[BUFFER_SIZE];
+        size_t  cb;
+
+        if (NT_SUCCESS(ntstatus))
+        {
+            ntstatus = RtlStringCbPrintfA(buffer, 
+                                          sizeof(buffer), 
+                                           "Make code: %d\r\n", ctx->inputData.MakeCode);
+
+            if (NT_SUCCESS(ntstatus))
+            {
+                ntstatus = RtlStringCbLengthA(buffer, sizeof(buffer), &cb);
+
+                if (NT_SUCCESS(ntstatus))
+                {
+                    ntstatus = ZwWriteFile(handle, 
+                                           NULL, 
+                                           NULL, 
+                                           NULL, 
+                                           &ioStatusBlock,
+                                           buffer, 
+                                           (ULONG)cb, 
+                                           NULL, 
+                                           NULL);
+                }
+            }
+
+            ZwClose(handle);
+        }
+
+    } 
+
     IoFreeWorkItem(ctx->worker);
-    //free poll
-    ExFreePoolWithTag(Context, 'ctx');
+    ExFreePoolWithTag(ctx, 'ctx');
 }
 
 VOID

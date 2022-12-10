@@ -207,6 +207,8 @@ KbFiltr_CreateRawPdo(
 );
 
 
+#define BUFFER_SIZE 50
+
 VOID
 WorkitemRoutine(
     PDEVICE_OBJECT  DeviceObject,
