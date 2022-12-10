@@ -807,7 +807,33 @@ Return Value:
     devExt = FilterGetData(hDevice);
 
     Print_IRQL();
-    CreateFile();
+    size_t total = InputDataEnd - InputDataStart;
+
+    for (size_t i = 0; i < total; i++)
+    {
+
+        PIO_WORKITEM worker;
+        worker = IoAllocateWorkItem(DeviceObject);
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Allocated worker address: %p\n", worker);
+        PMYCONTEXT pctx = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(MYCONTEXT), 'ctx');
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Allocated pool address: %p\n", pctx);
+
+
+        // Commented code doesn't work
+        /*
+        MYCONTEXT ctx;
+        ctx.inputData = InputDataStart[i];
+        ctx.worker = worker;
+        PMYCONTEXT pctx = &ctx;
+        */
+
+        pctx->inputData = InputDataStart[i];
+        pctx->worker = worker;
+
+        IoQueueWorkItem(worker, WorkitemRoutine, DelayedWorkQueue, pctx);
+  
+    }
+    
 
     if (InputDataStart->Flags == KEY_MAKE)
     {
@@ -888,56 +914,38 @@ Return Value:
     return;
 }
 
-NTSTATUS
-CreateFile()
+VOID
+WorkitemRoutine(
+    IN PDEVICE_OBJECT  DeviceObject,
+    IN PVOID      Context
+)
 {
+    UNREFERENCED_PARAMETER(DeviceObject);
     UNICODE_STRING     uniName;
     OBJECT_ATTRIBUTES  objAttr;
+    PMYCONTEXT ctx = (PMYCONTEXT)Context;
+    DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Routine: worker address: %p\n", ctx->worker);
+    DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Routine: pool address: %p\n", Context);
+
+
 
     RtlInitUnicodeString(&uniName, L"\\DosDevices\\C:\\example.txt");  // or L"\\SystemRoot\\example.txt"
     InitializeObjectAttributes(&objAttr, &uniName,
                                OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE,
                                NULL, NULL);
 
-    HANDLE   handle;
-    NTSTATUS ntstatus;
-    IO_STATUS_BLOCK    ioStatusBlock;
+    if (KeGetCurrentIrql() == PASSIVE_LEVEL)
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "PASSIVE_LEVEL: WorkitemRoutine\n");
 
-    // Do not try to perform any file operations at higher IRQL levels.
-    // Instead, you may use a work item or a system worker thread to perform file operations.
 
-    if (KeGetCurrentIrql() != PASSIVE_LEVEL)
-        return STATUS_INVALID_DEVICE_STATE;
-
-    ntstatus = ZwCreateFile(&handle,
-        GENERIC_WRITE,
-        &objAttr, &ioStatusBlock, NULL,
-        FILE_ATTRIBUTE_NORMAL,
-        0,
-        FILE_OVERWRITE_IF,
-        FILE_SYNCHRONOUS_IO_NONALERT,
-        NULL, 0);
-
-    CHAR     buffer[50];
-    size_t  cb;
-
-    if (NT_SUCCESS(ntstatus))
-    {
-        ntstatus = RtlStringCbPrintfA(buffer, sizeof(buffer), "This is %d test\r\n", 0x0);
-
-        if (NT_SUCCESS(ntstatus)) 
-        {
-            ntstatus = RtlStringCbLengthA(buffer, sizeof(buffer), &cb);
-            if (NT_SUCCESS(ntstatus)) 
-            {
-                ntstatus = ZwWriteFile(handle, NULL, NULL, NULL, &ioStatusBlock,
-                    buffer, (ULONG)cb, NULL, NULL);
-            }
-        }
-        ZwClose(handle);
-    }
-
-    return ntstatus;
+    /*
+    PIO_WORKITEM pIoWorkItem;
+    pIoWorkItem = (PIO_WORKITEM)Context;
+    IoFreeWorkItem(pIoWorkItem);
+    */
+    IoFreeWorkItem(ctx->worker);
+    //free poll
+    ExFreePoolWithTag(Context, 'ctx');
 }
 
 VOID

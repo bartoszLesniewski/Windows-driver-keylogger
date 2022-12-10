@@ -117,6 +117,11 @@ typedef struct _WORKER_ITEM_CONTEXT {
 
 WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(WORKER_ITEM_CONTEXT, GetWorkItemContext)
 
+typedef struct _MYCONTEXT {
+    KEYBOARD_INPUT_DATA inputData;
+    PIO_WORKITEM worker;
+} MYCONTEXT, *PMYCONTEXT;
+
 //
 // Prototypes
 //
@@ -126,6 +131,8 @@ EVT_WDF_DRIVER_DEVICE_ADD KbFilter_EvtDeviceAdd;
 EVT_WDF_IO_QUEUE_IO_DEVICE_CONTROL KbFilter_EvtIoDeviceControlForRawPdo;
 EVT_WDF_IO_QUEUE_IO_DEVICE_CONTROL KbFilter_EvtIoDeviceControlFromRawPdo;
 EVT_WDF_IO_QUEUE_IO_INTERNAL_DEVICE_CONTROL KbFilter_EvtIoInternalDeviceControl;
+IO_WORKITEM_ROUTINE WorkitemRoutine;
+
 
 NTSTATUS
 KbFilter_InitializationRoutine(
@@ -199,8 +206,12 @@ KbFiltr_CreateRawPdo(
     ULONG           InstanceNo
 );
 
-NTSTATUS
-CreateFile();
+
+VOID
+WorkitemRoutine(
+    PDEVICE_OBJECT  DeviceObject,
+    PVOID      Context
+);
 
 VOID
 Print_IRQL();
