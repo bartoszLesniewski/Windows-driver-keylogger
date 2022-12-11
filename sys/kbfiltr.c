@@ -46,6 +46,92 @@ Environment:
 #endif
 
 ULONG InstanceNo = 0;
+CONST CHAR* keysMap[KEYS_MAP_SIZE] = {
+    "[UNDEFINED]",      // scan code: 0
+    "[ESC]",             // scan code: 1
+    "1",                // scan code: 2
+    "2",                // scan code: 3
+    "3",                // scan code: 4
+    "4",                // scan code: 5
+    "5",                // scan code: 6
+    "6",                // scan code: 7
+    "7",                // scan code: 8
+    "8",                // scan code: 9
+    "9",                // scan code: 10
+    "0",                // scan code: 11
+    "-",                // scan code: 12
+    "=",                // scan code: 13
+    "[BACKSPACE]",      // scan code: 14
+    "[TAB]",            // scan code: 15
+    "Q",                // scan code: 16
+    "W",                // scan code: 17
+    "E",                // scan code: 18
+    "R",                // scan code: 19
+    "T",                // scan code: 20
+    "Y",                // scan code: 21
+    "U",                // scan code: 22
+    "I",                // scan code: 23
+    "O",                // scan code: 24
+    "P",                // scan code: 25
+    "[",                // scan code: 26
+    "]",                // scan code: 27
+    "[ENTER]",          // scan code: 28
+    "[CTRL]",           // scan code: 29
+    "A",                // scan code: 30
+    "S",                // scan code: 31
+    "D",                // scan code: 32
+    "F",                // scan code: 33
+    "G",                // scan code: 34
+    "H",                // scan code: 35
+    "J",                // scan code: 36
+    "K",                // scan code: 37
+    "L",                // scan code: 38
+    ";",                // scan code: 39
+    "'",                // scan code: 40
+    "`",                // scan code: 41
+    "[LEFT_SHIFT]",     // scan code: 42
+    "\\",               // scan code: 43
+    "Z",                // scan code: 44
+    "X",                // scan code: 45
+    "C",                // scan code: 46
+    "V",                // scan code: 47
+    "B",                // scan code: 48
+    "N",                // scan code: 49
+    "M",                // scan code: 50
+    ",",                // scan code: 51
+    ".",                // scan code: 52
+    "/",                // scan code: 53
+    "[RIGHT_SHIFT]",    // scan code: 54
+    "[NUM_*]",          // scan code: 55
+    "[ALT]",            // scan code: 56
+    "[SPACE]",          // scan code: 57
+    "[CAPS_LOCK]",      // scan code: 58
+    "[F1]",             // scan code: 59
+    "[F2]",             // scan code: 60
+    "[F3]",             // scan code: 61
+    "[F4]",             // scan code: 62
+    "[F5]",             // scan code: 63
+    "[F6]",             // scan code: 64
+    "[F7]",             // scan code: 65
+    "[F8]",             // scan code: 66
+    "[F9]",             // scan code: 67
+    "[F10]",            // scan code: 68
+    "[NUM_LOCK]",       // scan code: 69
+    "[SCROLL_LOCK]",    // scan code: 70
+    "[NUM_7]",          // scan code: 71
+    "[NUM_8]",          // scan code: 72
+    "[NUM_9]",          // scan code: 73
+    "-",                // scan code: 74
+    "[NUM_4]",          // scan code: 75
+    "[NUM_5]",          // scan code: 76
+    "[NUM_6]",          // scan code: 77
+    "+",                // scan code: 78
+    "[NUM_1]",          // scan code: 79
+    "[NUM_2]",          // scan code: 80
+    "[NUM_3]",          // scan code: 81
+    "[INSERT]",         // scan code: 82
+    "[DELETE]"          // scan code: 83
+};
 
 NTSTATUS
 DriverEntry(
@@ -806,34 +892,39 @@ Return Value:
 
     devExt = FilterGetData(hDevice);
 
-    Print_IRQL();
+    PrintIRQL();
+    /*
     size_t total = InputDataEnd - InputDataStart;
 
     for (size_t i = 0; i < total; i++)
     {
-
         PIO_WORKITEM worker;
         worker = IoAllocateWorkItem(DeviceObject);
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Allocated worker address: %p\n", worker);
         PMYCONTEXT pctx = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(MYCONTEXT), 'ctx');
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Allocated pool address: %p\n", pctx);
 
-
-        // Commented code doesn't work
-        /*
-        MYCONTEXT ctx;
-        ctx.inputData = InputDataStart[i];
-        ctx.worker = worker;
-        PMYCONTEXT pctx = &ctx;
-        */
-
         pctx->inputData = InputDataStart[i];
         pctx->worker = worker;
 
         IoQueueWorkItem(worker, WorkitemRoutine, DelayedWorkQueue, pctx);
-  
-    }
+    } 
+    */
     
+    //if (InputDataStart->Flags != KEY_BREAK)
+    if (InputDataStart->Flags == KEY_MAKE || (InputDataStart->Flags == KEY_E0 && InputDataStart->MakeCode != PRECEDING_SHIFT))
+    {
+        PIO_WORKITEM worker;
+        worker = IoAllocateWorkItem(DeviceObject);
+        //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Allocated worker address: %p\n", worker);
+        PMYCONTEXT pctx = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(MYCONTEXT), 'ctx');
+        //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Allocated pool address: %p\n", pctx);
+        pctx->inputData = *InputDataStart;
+        pctx->worker = worker;
+
+        IoQueueWorkItem(worker, WorkitemRoutine, DelayedWorkQueue, pctx);
+    }
+   
 
     if (InputDataStart->Flags == KEY_MAKE)
     {
@@ -850,6 +941,10 @@ Return Value:
     else if (InputDataStart->Flags == KEY_E1)
     {
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "E1 code: %d\n", InputDataStart->MakeCode);
+    }
+    else if (InputDataStart->Flags == KEY_E1)
+    {
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Another flag: %d\n", InputDataStart->Flags);
     }
 
     (*(PSERVICE_CALLBACK_ROUTINE)(ULONG_PTR) devExt->UpperConnectData.ClassService)(
@@ -916,16 +1011,16 @@ Return Value:
 
 VOID
 WorkitemRoutine(
-    IN PDEVICE_OBJECT  DeviceObject,
-    IN PVOID      Context
+    PDEVICE_OBJECT  DeviceObject,
+    PVOID      Context
 )
 {
     UNREFERENCED_PARAMETER(DeviceObject);
     UNICODE_STRING     uniName;
     OBJECT_ATTRIBUTES  objAttr;
     PMYCONTEXT ctx = (PMYCONTEXT)Context;
-    DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Routine: worker address: %p\n", ctx->worker);
-    DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Routine: pool address: %p\n", Context);
+    //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Routine: worker address: %p\n", ctx->worker);
+    //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Routine: pool address: %p\n", Context);
 
 
 
@@ -938,6 +1033,17 @@ WorkitemRoutine(
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "PASSIVE_LEVEL: WorkitemRoutine\n");
 
    
+    if (ctx->inputData.Flags == KEY_MAKE)
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "KEY_MAKE: %d\n", ctx->inputData.MakeCode);
+    else if (ctx->inputData.Flags == KEY_E0)
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "KEY_E0: %d\n", ctx->inputData.MakeCode);
+    else if (ctx->inputData.Flags == KEY_E1)
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "KEY_E1: %d\n", ctx->inputData.MakeCode);
+    else
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Another flag %d\n", ctx->inputData.Flags);
+
+
+    
     // Do not try to perform any file operations at higher IRQL levels.
     // Instead, you may use a work item or a system worker thread to perform file operations.
 
@@ -964,9 +1070,19 @@ WorkitemRoutine(
 
         if (NT_SUCCESS(ntstatus))
         {
-            ntstatus = RtlStringCbPrintfA(buffer, 
-                                          sizeof(buffer), 
-                                           "Make code: %d\r\n", ctx->inputData.MakeCode);
+            if (ctx->inputData.MakeCode < KEYS_MAP_SIZE)
+                ntstatus = RtlStringCbPrintfA(buffer,
+                                              sizeof(buffer),
+                                              "Key: %d %s \r\n", 
+                                              ctx->inputData.MakeCode, 
+                                              keysMap[ctx->inputData.MakeCode]);
+            else
+                ntstatus = RtlStringCbPrintfA(buffer,
+                                              sizeof(buffer),
+                                              "Key: %d %s \r\n",
+                                              ctx->inputData.MakeCode,
+                                              "Unhandled code");
+
 
             if (NT_SUCCESS(ntstatus))
             {
@@ -996,7 +1112,7 @@ WorkitemRoutine(
 }
 
 VOID
-Print_IRQL()
+PrintIRQL()
 {
     KIRQL level = KeGetCurrentIrql();
 

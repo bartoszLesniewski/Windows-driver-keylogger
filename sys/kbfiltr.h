@@ -208,6 +208,8 @@ KbFiltr_CreateRawPdo(
 
 
 #define BUFFER_SIZE 50
+#define KEYS_MAP_SIZE 84
+#define PRECEDING_SHIFT 42
 
 VOID
 WorkitemRoutine(
@@ -216,7 +218,7 @@ WorkitemRoutine(
 );
 
 VOID
-Print_IRQL();
+PrintIRQL();
 
 
 #endif  // KBFILTER_H
