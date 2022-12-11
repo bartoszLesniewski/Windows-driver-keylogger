@@ -117,11 +117,6 @@ typedef struct _WORKER_ITEM_CONTEXT {
 
 WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(WORKER_ITEM_CONTEXT, GetWorkItemContext)
 
-typedef struct _MYCONTEXT {
-    KEYBOARD_INPUT_DATA inputData;
-    PIO_WORKITEM worker;
-} MYCONTEXT, *PMYCONTEXT;
-
 //
 // Prototypes
 //
@@ -208,8 +203,14 @@ KbFiltr_CreateRawPdo(
 
 
 #define BUFFER_SIZE 50
-#define KEYS_MAP_SIZE 84
+#define KEYS_MAP_SIZE 89
 #define PRECEDING_SHIFT 42
+
+typedef struct _MYCONTEXT {
+    KEYBOARD_INPUT_DATA inputData;
+    PIO_WORKITEM worker;
+} MYCONTEXT, * PMYCONTEXT;
+
 
 VOID
 WorkitemRoutine(
@@ -220,6 +221,10 @@ WorkitemRoutine(
 VOID
 PrintIRQL();
 
+CHAR*
+GetExtendedKey(
+    USHORT scanCode
+);
 
 #endif  // KBFILTER_H
 

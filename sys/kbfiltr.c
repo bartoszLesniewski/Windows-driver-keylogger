@@ -121,16 +121,21 @@ CONST CHAR* keysMap[KEYS_MAP_SIZE] = {
     "[NUM_7]",          // scan code: 71
     "[NUM_8]",          // scan code: 72
     "[NUM_9]",          // scan code: 73
-    "-",                // scan code: 74
+    "[NUM_-]",                // scan code: 74
     "[NUM_4]",          // scan code: 75
     "[NUM_5]",          // scan code: 76
     "[NUM_6]",          // scan code: 77
-    "+",                // scan code: 78
+    "[NUM_+]",                // scan code: 78
     "[NUM_1]",          // scan code: 79
     "[NUM_2]",          // scan code: 80
     "[NUM_3]",          // scan code: 81
-    "[INSERT]",         // scan code: 82
-    "[DELETE]"          // scan code: 83
+    "[NUM_0]",          // scan code: 82
+    "[NUM,]",           // scan code: 83
+    "[UNDEFINED]",      // scan code: 84
+    "[UNDEFINED]",      // scan code: 85
+    "[UNDEFINED]",      // scan code: 86
+    "[F11]",            // scan code: 87
+    "[F12]",            // scan code: 88
 };
 
 NTSTATUS
@@ -910,6 +915,13 @@ Return Value:
         IoQueueWorkItem(worker, WorkitemRoutine, DelayedWorkQueue, pctx);
     } 
     */
+
+    size_t total = InputDataEnd - InputDataStart;
+    DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Size %d\n", total);
+    for (size_t i = 0; i < total; i++)
+    {
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Code: %d   Flag: %d\n", InputDataStart[i].MakeCode, InputDataStart[i].Flags);
+    }
     
     //if (InputDataStart->Flags != KEY_BREAK)
     if (InputDataStart->Flags == KEY_MAKE || (InputDataStart->Flags == KEY_E0 && InputDataStart->MakeCode != PRECEDING_SHIFT))
@@ -925,7 +937,7 @@ Return Value:
         IoQueueWorkItem(worker, WorkitemRoutine, DelayedWorkQueue, pctx);
     }
    
-
+    /*
     if (InputDataStart->Flags == KEY_MAKE)
     {
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Pressed code: %d\n", InputDataStart->MakeCode);
@@ -946,7 +958,7 @@ Return Value:
     {
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Another flag: %d\n", InputDataStart->Flags);
     }
-
+    */
     (*(PSERVICE_CALLBACK_ROUTINE)(ULONG_PTR) devExt->UpperConnectData.ClassService)(
         devExt->UpperConnectData.ClassDeviceObject,
         InputDataStart,
@@ -1029,9 +1041,9 @@ WorkitemRoutine(
                                OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE,
                                NULL, NULL);
 
+    /*
     if (KeGetCurrentIrql() == PASSIVE_LEVEL)
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "PASSIVE_LEVEL: WorkitemRoutine\n");
-
    
     if (ctx->inputData.Flags == KEY_MAKE)
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "KEY_MAKE: %d\n", ctx->inputData.MakeCode);
@@ -1041,7 +1053,7 @@ WorkitemRoutine(
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "KEY_E1: %d\n", ctx->inputData.MakeCode);
     else
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Another flag %d\n", ctx->inputData.Flags);
-
+    */
 
     
     // Do not try to perform any file operations at higher IRQL levels.
@@ -1070,19 +1082,20 @@ WorkitemRoutine(
 
         if (NT_SUCCESS(ntstatus))
         {
-            if (ctx->inputData.MakeCode < KEYS_MAP_SIZE)
-                ntstatus = RtlStringCbPrintfA(buffer,
-                                              sizeof(buffer),
-                                              "Key: %d %s \r\n", 
-                                              ctx->inputData.MakeCode, 
-                                              keysMap[ctx->inputData.MakeCode]);
+            const CHAR* key;
+            if (ctx->inputData.Flags == KEY_E0)
+                key = GetExtendedKey(ctx->inputData.MakeCode);
+            else if (ctx->inputData.MakeCode < KEYS_MAP_SIZE)
+                key = keysMap[ctx->inputData.MakeCode];
             else
-                ntstatus = RtlStringCbPrintfA(buffer,
-                                              sizeof(buffer),
-                                              "Key: %d %s \r\n",
-                                              ctx->inputData.MakeCode,
-                                              "Unhandled code");
+                key = "[UNDEFINED]";
 
+                
+            ntstatus = RtlStringCbPrintfA(buffer,
+                                          sizeof(buffer),
+                                          "Key: %d %s \r\n",
+                                          ctx->inputData.MakeCode,
+                                          key);
 
             if (NT_SUCCESS(ntstatus))
             {
@@ -1122,4 +1135,49 @@ PrintIRQL()
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Current IRQL: %d (APC_LEVEL)\n", level);
     else if (level == DISPATCH_LEVEL)
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Current IRQL: %d (DISPATCH_LEVEL)\n", level);
+}
+
+CHAR*
+GetExtendedKey(
+    USHORT scanCode
+)
+{
+    switch (scanCode)
+    {
+        case 28:
+            return "[NUM_ENTER]";
+        case 53:
+            return "/";
+        case 55:
+            return "[PrtSc]";
+        case 56:
+            return "[ALT]";
+        case 71:
+            return "[Home]";
+        case 72:
+            return "[Up_Arrow]";
+        case 73:
+            return "[PageUp]";
+        case 75:
+            return "[Left_Arrow]";
+        case 77:
+            return "[Right_Arrow]";
+        case 79:
+            return "[End]";
+        case 80:
+            return "[Down_Arrow]";
+        case 81:
+            return "[PageDown]";
+        case 82:
+            return "[INSERT]";
+        case 83:
+            return "[DELETE]";
+        case 91:
+            return "[WIN]";
+        case 93:
+            return "[MENU]";
+        default:
+            return "[UNDEFINED]";
+
+    }
 }
